@@ -1,0 +1,141 @@
+Program.Sub.Preflight.Start
+
+Program.Sub.Preflight.End
+
+Program.Sub.Main.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	'Hooks: 39810-Populate and 39832-Script 3 Button
+
+	V.Local.sWindowText.Declare
+	V.Local.sText.Declare
+	V.Local.sNumber.Declare
+	V.Local.sLine.Declare
+	V.Local.iCnt.Declare
+	V.Local.sSQL.Declare
+	V.Local.sMsg.Declare
+	V.Local.sTextNew.Declare
+
+	F.Intrinsic.Control.SelectCase(V.Caller.Hook)
+		F.Intrinsic.Control.Case(39810)
+			V.Passed.000203.Set("Cnv Comments")
+		F.Intrinsic.Control.Case(39832)
+			F.Intrinsic.API.GetWindowText(V.Caller.Handle,V.Local.sWindowText)
+			F.Intrinsic.String.Split(V.Local.sWindowText,"     ",V.Local.sText)
+
+			F.Intrinsic.Control.For(V.Local.iCnt,0,1,1)
+				F.Intrinsic.Control.SelectCase(V.Local.iCnt)
+					F.Intrinsic.Control.Case(0)
+						F.Intrinsic.String.Split(V.Local.sText(V.Local.iCnt),":",V.Local.sNumber)
+					F.Intrinsic.Control.Case(1)
+						F.Intrinsic.String.Split(V.Local.sText(V.Local.iCnt),":",V.Local.sLine)
+				F.Intrinsic.Control.EndSelect
+			F.Intrinsic.Control.Next(V.Local.iCnt)
+
+			F.ODBC.Connection!con.OpenCompanyConnection(300)
+			F.Intrinsic.Control.CallSub(tablecheck)
+
+			F.Intrinsic.Control.SelectCase(V.Local.sNumber(0).Trim)
+				F.Intrinsic.Control.Case("Quote Number")
+					F.Intrinsic.String.Build("Select * From Quote_Text Where Quote_No = '{0}' and Quote_Line Like '%{1}' Order By Text_Seq;",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sSQL)
+					F.Data.DataTable.CreateFromSQL("dtTextOld","con",V.Local.sSQL,True)
+					F.Intrinsic.Control.If(V.DataTable.dtTextOld.RowCount,=,0)
+						F.Intrinsic.String.Build("There is no text to update for Quote ({0}) and Line ({1}).",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sMsg)
+						Function.Intrinsic.UI.Msgbox(V.Local.sMsg,"Text Validation")
+						F.Intrinsic.Control.CallSub(unload)
+					F.Intrinsic.Control.Else
+						F.Intrinsic.String.Build("Select * From Quote_Ln_Text Where Quote_Number = '{0}' and Quote_Line = '{1}';",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sSQL)
+						F.Data.DataTable.CreateFromSQL("dtTextNew","con",V.Local.sSQL,True)
+						F.Data.DataTable.DeleteRow("dtTextNew")
+						F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataTable.dtTextOld.RowCount--,1)
+							F.Intrinsic.Control.If(V.Local.iCnt,<>,V.DataTable.dtTextOld.RowCount--)
+								F.Intrinsic.String.Build("{0}{1}{2}",V.Local.sTextNew,V.DataTable.dtTextOld(V.Local.iCnt).Text!FieldValTrim,V.Ambient.NewLine,V.Local.sTextNew)
+							F.Intrinsic.Control.Else
+								F.Intrinsic.String.Build("{0}{1}",V.Local.sTextNew,V.DataTable.dtTextOld(V.Local.iCnt).Text!FieldValTrim,V.Local.sTextNew)
+							F.Intrinsic.Control.EndIf
+						F.Intrinsic.Control.Next(V.Local.iCnt)
+						F.Data.DataTable.AddRow("dtTextNew","QUOTE_NUMBER",V.Local.sNumber(1).Trim,"QUOTE_LINE",V.Local.sLine(1).Trim,"QUOTE_TYPE",9999,"TEXT",V.Local.sTextNew)
+						F.Data.DataTable.SaveToDB("dtTextNew","con","Quote_Ln_Text","QUOTE_NUMBER*!*QUOTE_LINE*!*QUOTE_TYPE")
+						F.Intrinsic.UI.Msgbox("Close and Reopen Text window to see Text changes.","Complete")
+					F.Intrinsic.Control.EndIf
+
+				F.Intrinsic.Control.Case("Order")
+					F.Intrinsic.String.Build("Select * From Order_Text Where Order_No = '{0}' and Order_Line Like '%{1}' Order By Text_Seq;",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sSQL)
+					F.Data.DataTable.CreateFromSQL("dtTextOld","con",V.Local.sSQL,True)
+					F.Intrinsic.Control.If(V.DataTable.dtTextOld.RowCount,=,0)
+						F.Intrinsic.String.Build("There is no text to update for Order ({0}) and Line ({1}).",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sMsg)
+						Function.Intrinsic.UI.Msgbox(V.Local.sMsg,"Text Validation")
+						F.Intrinsic.Control.CallSub(unload)
+					F.Intrinsic.Control.Else
+						F.Intrinsic.String.Build("Select * From Order_Ln_Text Where Order_Num = '{0}' and Order_Line = '{1}';",V.Local.sNumber(1).Trim,V.Local.sLine(1).Trim,V.Local.sSQL)
+						F.Data.DataTable.CreateFromSQL("dtTextNew","con",V.Local.sSQL,True)
+						F.Data.DataTable.DeleteRow("dtTextNew")
+						F.Intrinsic.Control.For(V.Local.iCnt,0,V.DataTable.dtTextOld.RowCount--,1)
+							F.Intrinsic.Control.If(V.Local.iCnt,<>,V.DataTable.dtTextOld.RowCount--)
+								F.Intrinsic.String.Build("{0}{1}{2}",V.Local.sTextNew,V.DataTable.dtTextOld(V.Local.iCnt).Text!FieldValTrim,V.Ambient.NewLine,V.Local.sTextNew)
+							F.Intrinsic.Control.Else
+								F.Intrinsic.String.Build("{0}{1}",V.Local.sTextNew,V.DataTable.dtTextOld(V.Local.iCnt).Text!FieldValTrim,V.Local.sTextNew)
+							F.Intrinsic.Control.EndIf
+						F.Intrinsic.Control.Next(V.Local.iCnt)
+						F.Data.DataTable.AddRow("dtTextNew","ORDER_NUM",V.Local.sNumber(1).Trim,"ORDER_LINE",V.Local.sLine(1).Trim,"ORDER_TYPE",9999,"TEXT",V.Local.sTextNew)
+						F.Data.DataTable.SaveToDB("dtTextNew","con","Order_Ln_Text","ORDER_NUM*!*ORDER_LINE*!*ORDER_TYPE")
+						F.Intrinsic.UI.Msgbox("Close and Reopen Text window to see Text changes.","Complete")
+					F.Intrinsic.Control.EndIf
+
+			F.Intrinsic.Control.EndSelect
+	F.Intrinsic.Control.EndSelect
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: GAB_4494_Comment_Conversion.g2u{0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}.",V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.Main.End
+
+Program.Sub.TableCheck.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	V.Local.bQteExists.Declare
+	V.Local.bOrdExists.Declare
+
+	F.ODBC.Connection!con.TableExists("QUOTE_TEXT",V.Local.bQteExists)
+	F.ODBC.Connection!con.TableExists("ORDER_TEXT",V.Local.bOrdExists)
+
+	F.Intrinsic.Control.If(V.Local.bQteExists,=,False)
+	F.Intrinsic.Control.AndIf(V.Local.bOrdExists,=,False)
+		Function.Intrinsic.UI.Msgbox("QUOTE_TEXT and ORDER_TEXT will need to be created before you continue.","Table Check")
+		F.Intrinsic.Control.CallSub(unload)
+	F.Intrinsic.Control.ElseIf(V.Local.bQteExists,=,False)
+		Function.Intrinsic.UI.Msgbox("QUOTE_TEXT will need to be created before you continue.","Table Check")
+		F.Intrinsic.Control.CallSub(unload)
+	F.Intrinsic.Control.ElseIf(V.Local.bOrdExists,=,False)
+		Function.Intrinsic.UI.Msgbox("ORDER_TEXT will need to be created before you continue.","Table Check")
+		F.Intrinsic.Control.CallSub(unload)
+	F.Intrinsic.Control.EndIf
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: GAB_4494_Comment_Conversion.g2u{0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}.",V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.TableCheck.End
+
+Program.Sub.Unload.Start
+	F.Intrinsic.Control.Try
+	V.Local.sError.Declare
+	
+	F.ODBC.Connection!con.Close
+	F.Intrinsic.Control.End 
+	
+	F.Intrinsic.Control.Catch
+		F.Intrinsic.String.Build("Project: GAB_4494_Comment_Conversion.g2u{0}{0}Subroutine: {1}{0}Error Occurred {2} with description {3}.",V.Ambient.Newline,V.Ambient.CurrentSubroutine,V.Ambient.ErrorNumber,V.Ambient.ErrorDescription,V.Local.sError)
+		F.Intrinsic.UI.Msgbox(V.Local.sError)
+		F.Intrinsic.Control.End 
+	F.Intrinsic.Control.EndTry
+Program.Sub.Unload.End
+
+Program.Sub.Comments.Start
+${$0$}$GAB_4494_Comment_Conversion$}$AGV$}$03/15/2017 10:22:09 AM$}$False
+Program.Sub.Comments.End
